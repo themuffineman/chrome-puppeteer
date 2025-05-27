@@ -1,6 +1,8 @@
 const puppeteer = require("puppeteer");
 const { listOfPinUrls } = require("./pin-url");
 const { config } = require("dotenv");
+const fs = require("fs");
+const path = require("path");
 config();
 const email = process.env.EMAIL;
 const password = process.env.PASSWORD;
@@ -8,12 +10,19 @@ async function scrape() {
   const browser = await puppeteer.launch({
     headless: false, // headful mode
     args: ["--disable-notifications"], // Disable notifications
+    defaultViewport: null, // Set to null to use the full window size
   });
   const page = await browser.newPage();
   await loginToPinterest(page, email, password);
   const validProfiles = [];
   for (const pinUrl of listOfPinUrls) {
     try {
+      console.log(
+        "Now Scraping:",
+        pinUrl,
+        "index:",
+        listOfPinUrls.indexOf(pinUrl)
+      );
       await page.goto(pinUrl, { waitUntil: "networkidle2" });
       // Wait for and click the creator's profile link
       const profileLinkSelector = 'a[data-test-id="creator-avatar-link"]';
@@ -88,6 +97,7 @@ async function scrape() {
         const profileUrl = page.url();
         console.log("User profile URL:", profileUrl);
         validProfiles.push(profileUrl);
+        await appendWordToFile(profileUrl);
       } catch (e) {
         console.log("Messaging unavailable (toast likely shown).");
       }
@@ -124,4 +134,31 @@ async function loginToPinterest(page, email, password) {
     console.log("Login may have failed or took too long");
   }
 }
+async function sendProfileUrl(url) {
+  try {
+    let res = await fetch(
+      "https://cloud.activepieces.com/api/v1/webhooks/Hz6q79qL7GUXr8BS6qDO0",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          url,
+        }),
+      }
+    );
+    if (!res.ok) {
+      throw new Error("Failed to upload");
+    }
+  } catch (error) {
+    console.error(error.message);
+  }
+}
 scrape().then((urls) => console.log(urls));
+async function appendWordToFile(word, filePath = "./profiles.txt") {
+  try {
+    const absolutePath = path.resolve(filePath);
+    fs.appendFileSync(absolutePath, `${word}\n`, "utf8");
+    console.log(`Word "${word}" appended to file: ${absolutePath}`);
+  } catch (error) {
+    console.error("Error appending word to file:", error.message);
+  }
+}
