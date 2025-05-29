@@ -134,24 +134,7 @@ async function loginToPinterest(page, email, password) {
     console.log("Login may have failed or took too long");
   }
 }
-async function sendProfileUrl(url) {
-  try {
-    let res = await fetch(
-      "https://cloud.activepieces.com/api/v1/webhooks/Hz6q79qL7GUXr8BS6qDO0",
-      {
-        method: "POST",
-        body: JSON.stringify({
-          url,
-        }),
-      }
-    );
-    if (!res.ok) {
-      throw new Error("Failed to upload");
-    }
-  } catch (error) {
-    console.error(error.message);
-  }
-}
+
 scrape().then((urls) => console.log(urls));
 async function appendWordToFile(word, filePath = "./profiles.txt") {
   try {
