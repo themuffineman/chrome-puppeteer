@@ -1,5 +1,6 @@
 const puppeteer = require("puppeteer");
-const { listOfPinUrls } = require("./pin-url");
+const { pinUrls } = require("./pin-url");
+const { alreadyMesseged } = require("./already-messeged");
 const { config } = require("dotenv");
 const fs = require("fs");
 const path = require("path");
@@ -15,14 +16,9 @@ async function scrape() {
   const page = await browser.newPage();
   await loginToPinterest(page, email, password);
   const validProfiles = [];
-  for (const pinUrl of listOfPinUrls) {
+  for (const pinUrl of pinUrls) {
     try {
-      console.log(
-        "Now Scraping:",
-        pinUrl,
-        "index:",
-        listOfPinUrls.indexOf(pinUrl)
-      );
+      console.log("Now Scraping:", pinUrl, "index:", pinUrls.indexOf(pinUrl));
       await page.goto(pinUrl, { waitUntil: "networkidle2" });
       // Wait for and click the creator's profile link
       const profileLinkSelector = 'a[data-test-id="creator-avatar-link"]';
@@ -95,6 +91,14 @@ async function scrape() {
 
         // Save the profile URL since chat is enabled
         const profileUrl = page.url();
+        if (alreadyMesseged.includes(profileUrl)) {
+          console.log("Already messeged user");
+          continue;
+        }
+        if (validProfiles.includes(profileUrl)) {
+          console.log("Already scraped user");
+          continue;
+        }
         console.log("User profile URL:", profileUrl);
         validProfiles.push(profileUrl);
         await appendWordToFile(profileUrl);

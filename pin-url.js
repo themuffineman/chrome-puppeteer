@@ -1,1 +1,1 @@
-export const listOfPinUrls = [];
+export const pinUrls = [];
