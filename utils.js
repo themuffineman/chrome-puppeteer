@@ -93,27 +93,25 @@ async function waitAndExtractContent(page, selector, content = "text") {
  * @returns {Promise<string|null>} The extracted content as a string, or `null` if the extraction fails.
  * @throws Will throw an error if the selector is not found or the content cannot be extracted.
  */
-async function gotoPageSourceAndGetSavesAndComments(page) {
+async function gotoPageSourceAndGetSaves(page, pinUrl) {
   try {
-    // Get full HTML content of the page
     const html = await page.content();
 
-    // Match pattern: comment_count":1,"aggregated_stats":{"saves":223
+    // Match: "aggregated_stats":{"saves":4205
     const match = html.match(
-      /"comment_count"\s*:\s*(\d+),\s*"aggregated_stats"\s*:\s*\{\s*"saves"\s*:\s*(\d+)/
+      /"aggregated_stats"\s*:\s*\{\s*"saves"\s*:\s*(\d+)/
     );
 
     if (match) {
-      const commentCount = parseInt(match[1], 10);
-      const saves = parseInt(match[2], 10);
-      console.log(`Comments: ${commentCount}, Saves: ${saves}`);
-      return { comments, saves };
+      const saves = parseInt(match[1], 10);
+      console.log(`Saves: ${saves}`);
+      return saves;
     } else {
-      console.log("Could not find comment count or saves data.");
+      console.log("Saves not found.");
       return null;
     }
   } catch (error) {
-    console.error("Error getting data:", error);
+    console.error("Error getting saves:", error);
     return null;
   }
 }
@@ -121,5 +119,5 @@ async function gotoPageSourceAndGetSavesAndComments(page) {
 module.exports = {
   saveObjectsToCSV,
   waitAndExtractContent,
-  gotoPageSourceAndGetSavesAndComments,
+  gotoPageSourceAndGetSaves,
 };

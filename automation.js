@@ -4,7 +4,11 @@ const { alreadyMesseged } = require("./already-messeged");
 const { config } = require("dotenv");
 const fs = require("fs");
 const path = require("path");
-const { waitAndExtractContent, saveObjectsToCSV } = require("./utils.js");
+const {
+  waitAndExtractContent,
+  saveObjectsToCSV,
+  gotoPageSourceAndGetSaves,
+} = require("./utils.js");
 config();
 const email = process.env.EMAIL;
 const password = process.env.PASSWORD;
@@ -143,7 +147,7 @@ async function appendWordToFile(word, filePath = "./profiles.txt") {
   try {
     const absolutePath = path.resolve(filePath);
     fs.appendFileSync(absolutePath, `${word}\n`, "utf8");
-    console.log(`Word "${word}" appended to file: ${absolutePath}`);
+    console.log(`Word "${word}" appended to file`);
   } catch (error) {
     console.error("Error appending word to file:", error.message);
   }
@@ -165,14 +169,20 @@ async function pseo() {
   });
   const page = await browser.newPage();
   await loginToPinterest(page, email, password);
+  let scrapeIndex = 0;
   for (const pinUrl of pinUrls) {
     try {
+      scrapeIndex++;
       console.log("----------------------------------");
       console.log("Now Scraping:", pinUrl, "index:", pinUrls.indexOf(pinUrl));
       await page.goto(pinUrl, { waitUntil: "networkidle2" });
       await page.waitForSelector(profileLinkSelector);
       console.log("Creator Found");
-      const creatorProfileLink = page.url();
+      const creatorProfileLink = await waitAndExtractContent(
+        page,
+        profileLinkSelector,
+        "href"
+      );
       if (alreadyMesseged.includes(creatorProfileLink)) {
         console.log("Already scraped user");
         continue;
@@ -202,10 +212,8 @@ async function pseo() {
         numberOfLikesSelector,
         "text"
       );
-      const { comments, saves } = await gotoPageSourceAndGetSavesAndComments(
-        page
-      );
-      console.log("Comments and saves", comments, saves);
+      const saves = await gotoPageSourceAndGetSaves(page);
+
       scrapedData.push({
         title: pinTitle,
         description: pinDescription,
@@ -213,13 +221,16 @@ async function pseo() {
         profile_url: creatorProfileLink,
         image: pinImage,
         likes,
-        comments,
         saves,
       });
       console.log("----------------------------------");
       await appendWordToFile(creatorProfileLink);
     } catch (error) {
       console.error(error.messasge);
+    } finally {
+      if (scrapeIndex > 4) {
+        break;
+      }
     }
   }
   await browser?.close();
@@ -229,8 +240,8 @@ async function pseo() {
 // profilesAllowingMessages().then((urls) => console.log(urls));
 pseo()
   .then((data) => {
-    saveObjectsToCSV(data);
+    saveObjectsToCSV(data, "./pseo-data.csv");
   })
-  .catch(() => {
-    console.error("Failed to convert to CSV");
+  .catch((err) => {
+    console.error("Failed to convert to CSV", err);
   });
