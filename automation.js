@@ -7,7 +7,7 @@ const path = require("path");
 config();
 const email = process.env.EMAIL;
 const password = process.env.PASSWORD;
-async function scrape() {
+async function canAcceptMessege() {
   const browser = await puppeteer.launch({
     headless: false, // headful mode
     args: ["--disable-notifications"], // Disable notifications
@@ -138,8 +138,6 @@ async function loginToPinterest(page, email, password) {
     console.log("Login may have failed or took too long");
   }
 }
-
-scrape().then((urls) => console.log(urls));
 async function appendWordToFile(word, filePath = "./profiles.txt") {
   try {
     const absolutePath = path.resolve(filePath);
@@ -149,3 +147,109 @@ async function appendWordToFile(word, filePath = "./profiles.txt") {
     console.error("Error appending word to file:", error.message);
   }
 }
+async function pseo() {
+  const browser = await puppeteer.launch({
+    headless: false, // headful mode
+    args: ["--disable-notifications"], // Disable notifications
+    defaultViewport: null, // Set to null to use the full window size
+  });
+  const page = await browser.newPage();
+  await loginToPinterest(page, email, password);
+  const validProfiles = [];
+  const profileLinkSelector = 'a[data-test-id="creator-avatar-link"]';
+  const profileNameSelector = 'div[data-test-id="creator-profile-name"]';
+  const pinTitleSelector = 'div[data-test-id="rich-pin-information"].h1';
+  const pinImageSelector = 'div[data-test-id="closeup-image-main"].img';
+  const numberOfLikesSelector =
+    'div[data-test-id="aggregated-reactions-container"].X8m.zDA.IZT.eSP.dyH.llN.Kv8';
+  for (const pinUrl of pinUrls) {
+    try {
+      console.log("Now Scraping:", pinUrl, "index:", pinUrls.indexOf(pinUrl));
+      await page.goto(pinUrl, { waitUntil: "networkidle2" });
+      // Wait for and click the creator's profile link
+      await page.waitForSelector(profileLinkSelector);
+      console.log("Creator Found");
+      const creatorName = waitAndExtractContent(
+        page,
+        profileNameSelector,
+        "text"
+      );
+      const creatorProfileLink = waitAndExtractContent(
+        page,
+        profileLinkSelector,
+        "href"
+      );
+      const pinTitle = await waitAndExtractContent(
+        page,
+        pinTitleSelector,
+        "text"
+      );
+      const pinImage = await waitAndExtractContent(
+        page,
+        pinImageSelector,
+        "src"
+      );
+      const pinImageAlt = await waitAndExtractContent(
+        page,
+        pinImageSelector,
+        "alt"
+      );
+      const likes = await waitAndExtractContent(
+        page,
+        numberOfLikesSelector,
+        "text"
+      );
+    } catch (error) {
+      console.error(error.messasge);
+    }
+  }
+  await browser?.close();
+  return validProfiles;
+}
+
+/**
+ * Waits for a specific DOM element to appear on the page and extracts its content.
+ * The content can be one of the following: text, src (image source), alt text, or href (link URL).
+ *
+ * @async
+ * @function waitAndExtractContent
+ * @param {import('puppeteer').Page} page - The Puppeteer page instance to interact with.
+ * @param {string} selector - The CSS selector of the element to wait for and extract content from.
+ * @param {string} [content="text"] - The type of content to extract.
+ *    - "text": Extracts the text content of the element.
+ *    - "src": Extracts the `src` attribute of an image element.
+ *    - "alt": Extracts the `alt` attribute of an image element.
+ *    - "href": Extracts the `href` attribute of a link element.
+ * @returns {Promise<string|null>} The extracted content as a string, or `null` if the extraction fails.
+ * @throws Will throw an error if the selector is not found or the content cannot be extracted.
+ */
+async function waitAndExtractContent(page, selector, content = "text") {
+  try {
+    if (content === "src") {
+      // Wait for the image element to load and extract its 'src' attribute
+      await page.waitForSelector(selector);
+      const src = await page.$eval(selector, (el) => el.getAttribute("src"));
+      return src;
+    }
+    if (content === "alt") {
+      // Wait for the image element to load and extract its 'alt' attribute
+      await page.waitForSelector(selector);
+      const alt = await page.$eval(selector, (el) => el.getAttribute("alt"));
+      return alt;
+    }
+    if (content === "href") {
+      // Wait for the link element to load and extract its 'href' attribute
+      await page.waitForSelector(selector);
+      const href = await page.$eval(selector, (el) => el.getAttribute("href"));
+      return href;
+    }
+    await page.waitForSelector(selector);
+    const textContent = await page.$eval(selector, (el) =>
+      el.textContent.trim()
+    );
+    return textContent;
+  } catch (error) {
+    console.error("Failed to extract text content for: ", selector);
+  }
+}
+canAcceptMessege().then((urls) => console.log(urls));
