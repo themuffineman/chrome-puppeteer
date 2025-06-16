@@ -6,8 +6,8 @@ const fs = require("fs");
 const path = require("path");
 const {
   waitAndExtractContent,
-  saveObjectsToCSV,
   gotoPageSourceAndGetSaves,
+  saveObjectToJSON,
 } = require("./utils.js");
 config();
 const email = process.env.EMAIL;
@@ -156,7 +156,8 @@ async function pseo() {
   const profileLinkSelector = 'a[data-test-id="creator-avatar-link"]';
   const profileNameSelector = 'div[data-test-id="creator-profile-name"]';
   const pinTitleSelector = 'div[data-test-id="rich-pin-information"] h1';
-  const pinImageSelector = "img.hCL.kVc.L4E.MIw";
+  const pinImageSelector =
+    'div[data-test-id="closeup-image-main"] img.hCL.kVc.L4E.MIw';
   const pinDescriptionSelector =
     'div[data-test-id="truncated-description"] span';
   const numberOfLikesSelector =
@@ -213,22 +214,35 @@ async function pseo() {
         "text"
       );
       const saves = await gotoPageSourceAndGetSaves(page);
-
-      scrapedData.push({
-        title: pinTitle,
-        description: pinDescription,
-        profile_name: creatorName,
-        profile_url: creatorProfileLink,
-        image: pinImage,
-        likes,
-        saves,
-      });
-      console.log("----------------------------------");
-      await appendWordToFile(creatorProfileLink);
+      if (
+        pinTitle &&
+        pinUrl &&
+        pinDescription &&
+        creatorProfileLink &&
+        pinImage &&
+        likes &&
+        saves
+      ) {
+        scrapedData.push({
+          title: pinTitle,
+          pin_url: pinUrl,
+          description: pinDescription,
+          profile_name: creatorProfileLink,
+          profile_url: `https://uk.pinterest.com${creatorProfileLink}`,
+          image: pinImage,
+          likes,
+          saves,
+        });
+        console.log("----------------------------------");
+        await appendWordToFile(creatorProfileLink);
+      } else {
+        console.log("Not all details present");
+        continue;
+      }
     } catch (error) {
       console.error(error.messasge);
     } finally {
-      if (scrapeIndex > 4) {
+      if (scrapedData.length > 51) {
         break;
       }
     }
@@ -240,7 +254,7 @@ async function pseo() {
 // profilesAllowingMessages().then((urls) => console.log(urls));
 pseo()
   .then((data) => {
-    saveObjectsToCSV(data, "./pseo-data.csv");
+    saveObjectToJSON(data, "./pseo-data.json");
   })
   .catch((err) => {
     console.error("Failed to convert to CSV", err);

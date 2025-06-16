@@ -1,37 +1,29 @@
 const fs = require("fs");
 const path = require("path");
 
-function saveObjectsToCSV(data, filePath) {
-  if (!data || !Array.isArray(data) || data.length === 0) {
-    console.error("Invalid or empty data");
-    return;
+function saveObjectToJSON(data, filePath = "./pseo-data.json") {
+  try {
+    // Ensure directory exists
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    const initJSON = {
+      title: "Pinterest Template Examples For A Chocolate Cake Recipe Pin",
+      mainImage: "",
+      slug: "",
+      recipe: "chocolate cake recipe",
+      data: data,
+    };
+    // Convert object to JSON string with indentation
+    const jsonContent = JSON.stringify(initJSON, null, 2);
+
+    // Write to file
+    fs.writeFileSync(filePath, jsonContent, "utf8");
+    console.log(`JSON file saved to ${filePath}`);
+  } catch (error) {
+    console.error("Error saving JSON file:", error);
   }
-
-  const headers = Object.keys(data[0]);
-
-  const rows = data.map((obj) =>
-    headers
-      .map((header) => {
-        const val = obj[header] ?? "";
-        const escaped = ("" + val).replace(/"/g, '""');
-        return `"${escaped}"`;
-      })
-      .join(",")
-  );
-
-  // Add header row
-  rows.unshift(headers.join(","));
-
-  const csvContent = rows.join("\n");
-
-  // Ensure directory exists
-  const dir = path.dirname(filePath);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-
-  fs.writeFileSync(filePath, csvContent, "utf8");
-  console.log(`CSV file saved to ${filePath}`);
 }
 /**
  * Waits for a specific DOM element to appear on the page and extracts its content.
@@ -62,7 +54,6 @@ async function waitAndExtractContent(page, selector, content = "text") {
       // Wait for the image element to load and extract its 'alt' attribute
       await page.waitForSelector(selector);
       const alt = await page.$eval(selector, (el) => el.getAttribute("alt"));
-      console.log("img alt:", alt);
 
       return alt;
     }
@@ -70,14 +61,12 @@ async function waitAndExtractContent(page, selector, content = "text") {
       // Wait for the link element to load and extract its 'href' attribute
       await page.waitForSelector(selector);
       const href = await page.$eval(selector, (el) => el.getAttribute("href"));
-      console.log("href:", href);
       return href;
     }
     await page.waitForSelector(selector);
     const textContent = await page.$eval(selector, (el) =>
       el.textContent.trim()
     );
-    console.log("text:", textContent);
     return textContent;
   } catch (error) {
     console.error("Failed to extract content for: ", selector);
@@ -117,7 +106,7 @@ async function gotoPageSourceAndGetSaves(page, pinUrl) {
 }
 
 module.exports = {
-  saveObjectsToCSV,
+  saveObjectToJSON,
   waitAndExtractContent,
   gotoPageSourceAndGetSaves,
 };
