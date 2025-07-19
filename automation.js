@@ -9,6 +9,7 @@ const {
   gotoPageSourceAndGetSaves,
   saveObjectToJSON,
 } = require("./utils.js");
+const { fonts } = require("./test.js");
 config();
 const email = process.env.EMAIL;
 const password = process.env.PASSWORD;
@@ -242,7 +243,7 @@ async function pseo() {
     } catch (error) {
       console.error(error.messasge);
     } finally {
-      if (scrapedData.length > 51) {
+      if (scrapedData.length > 104) {
         break;
       }
     }
@@ -250,12 +251,91 @@ async function pseo() {
   await browser?.close();
   return scrapedData;
 }
+async function createFonts() {
+  try {
+    const fontSelectContainer = "#font-select";
+    const fontOption = "#font-select > option";
+    const nameInputSelector = "#input-text";
+    const sizeInputSelector = "#input-size";
+    const svgTextareaSelector = "#output-svg";
+
+    const browser = await puppeteer.launch({
+      headless: false,
+      args: ["--disable-notifications"],
+      defaultViewport: null,
+    });
+
+    const page = await browser.newPage();
+    await page.goto("https://danmarshall.github.io/google-font-to-svg-path/", {
+      waitUntil: "networkidle2",
+    });
+    await new Promise((res, _) => {
+      setTimeout(() => {
+        res();
+      }, 10000);
+    });
+    const results = {};
+
+    for (const fontName of fonts) {
+      console.log(`Processing: ${fontName}`);
+
+      // Select the font by matching its option value or text (case insensitive)
+      await page.evaluate(
+        (fontName, fontOption, fontSelectContainer) => {
+          const options = Array.from(document.querySelectorAll(fontOption));
+          const match = options.find(
+            (opt) =>
+              opt.textContent.trim().toLowerCase() === fontName.toLowerCase()
+          );
+          if (match) {
+            document.querySelector(fontSelectContainer).value = match.value;
+            match.selected = true;
+            document
+              .querySelector(fontSelectContainer)
+              .dispatchEvent(new Event("change"));
+          }
+        },
+        fontName,
+        fontOption,
+        fontSelectContainer
+      );
+
+      // Type the font name into the text input
+      await page.$eval(nameInputSelector, (el) => (el.value = ""));
+      await page.type(nameInputSelector, fontName, { delay: 50 });
+
+      // Set font size
+      await page.$eval(sizeInputSelector, (el) => (el.value = ""));
+      await page.type(sizeInputSelector, "25", { delay: 50 });
+
+      // Wait for the SVG to update
+      await new Promise((res, _) => {
+        setTimeout(() => {
+          res();
+        }, 500);
+      });
+
+      const svg = await page.$eval(svgTextareaSelector, (el) => el.value);
+      results[fontName] = svg;
+    }
+
+    await browser.close();
+
+    // Save or return your results
+    // console.log("Generated SVGs:", results);
+    // Optionally save to file using fs if needed:
+    fs.writeFileSync("font-svgs.json", JSON.stringify(results, null, 2));
+  } catch (error) {
+    console.error("Error:", error);
+  }
+}
 
 // profilesAllowingMessages().then((urls) => console.log(urls));
-pseo()
-  .then((data) => {
-    saveObjectToJSON(data, "./pseo-data.json");
-  })
-  .catch((err) => {
-    console.error("Failed to convert to CSV", err);
-  });
+// pseo()
+//   .then((data) => {
+//     saveObjectToJSON(data, "./pseo-data.json");
+//   })
+//   .catch((err) => {
+//     console.error("Failed to convert to CSV", err);
+//   });
+createFonts();

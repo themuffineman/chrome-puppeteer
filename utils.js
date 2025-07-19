@@ -9,10 +9,12 @@ function saveObjectToJSON(data, filePath = "./pseo-data.json") {
       fs.mkdirSync(dir, { recursive: true });
     }
     const initJSON = {
-      title: "Pinterest Template Examples For A Chocolate Cake Recipe Pin",
+      title:
+        "Pinterest Template Examples For A Chocolate Chip Cookies Recipe Pin",
       mainImage: "",
       slug: "",
-      recipe: "chocolate cake recipe",
+      createdAt: new Date(),
+      recipe: "chocolate chip cookies recipe",
       data: data,
     };
     // Convert object to JSON string with indentation
